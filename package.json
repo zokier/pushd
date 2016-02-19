@@ -1,5 +1,6 @@
 {
     "author": "Olivier Poitrey <rs@dailymotion.com>",
+    "license": "MIT",
     "name": "pushd",
     "description": "Blazing fast multi-protocol mobile push notification service",
     "version": "1.6.5",
@@ -30,19 +31,20 @@
     },
     "dependencies":
     {
-        "coffee-script": "~1.8.0",
-        "apn": "1.7.3",
+        "coffee-script": "~1.10.0",
+        "apn": "1.7.5",
         "c2dm": "1.2.1",
-        "node-gcm": "0.12.0",
+        "node-gcm": "0.14.0",
         "mpns": "2.1.0",
-        "async": "~0.2.10",
-        "express": "~3.20.2",
-        "body-parser": "~1.9.0",
-        "hiredis": "~0.1.17",
-        "redis": "~0.12.1",
-        "netmask": "~1.0.4",
-        "winston": "~0.7.3",
-        "wns": "git://github.com/futurice/wns.git#28bfe39a3be8c64f3d72b7c7a5cac77c049b137a"
+        "async": "~1.5.2",
+        "express": "~4.13.4",
+        "body-parser": "~1.15.0",
+        "hiredis": "~0.4.1",
+        "redis": "~2.4.2",
+        "punctual": "~1.0.2",
+        "netmask": "~1.0.5",
+        "winston": "~2.1.1",
+        "wns": "git://github.com/futurice/wns.git#b50810d168b8df547589d9af61917d22ccc91cc5"
     },
     "devDependencies":
     {

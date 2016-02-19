@@ -1,6 +1,7 @@
 should = require 'should'
 async = require 'async'
 redis = require 'redis'
+logger = require 'winston'
 Subscriber = require('../lib/subscriber').Subscriber
 Event = require('../lib/event').Event
 EventPublisher = require('../lib/eventpublisher').EventPublisher
@@ -35,7 +36,7 @@ describe 'Event', ->
             .exec =>
                 services = new PushServices()
                 services.addService('apns', new PushServiceFake())
-                @publisher = new EventPublisher(services)
+                @publisher = new EventPublisher(logger, services)
                 @event = new Event(@redis, 'unit-test' + Math.round(Math.random() * 100000))
                 done()
 
