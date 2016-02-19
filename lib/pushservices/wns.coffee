@@ -64,4 +64,4 @@ class PushServiceWNS
                 catch error
                     @logger?.error("WNS Error: #{error}")
 
-exports.PushServiceWNS = PushServiceWNS
+module.exports = PushServiceWNS

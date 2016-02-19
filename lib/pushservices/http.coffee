@@ -33,4 +33,4 @@ class PushServiceHTTP
             req.write(JSON.stringify(body))
             req.end()
 
-exports.PushServiceHTTP = PushServiceHTTP
+module.exports = PushServiceHTTP
