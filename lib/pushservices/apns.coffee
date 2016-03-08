@@ -37,10 +37,20 @@ class PushServiceAPNS
             note = new apns.Notification()
             device = new apns.Device(info.token)
             device.subscriberId = subscriber.id # used for error logging
-            if subOptions?.ignore_message isnt true and alert = payload.localizedMessage(info.lang)
-                note.alert = alert
+            if subOptions?.ignore_message isnt true
+                title = payload.localizedTitle(info.lang)
+                message = payload.localizedMessage(info.lang)
+                if not message
+                    message = title
+                if message
+                    if title
+                        note.alert =
+                            title: title
+                            body: message
+                    else
+                        note.alert = message
 
-            badge = parseInt(payload.badge || info.badge)
+            badge = parseInt(info.badge)
             if payload.incrementBadge
                 badge += 1
             
@@ -48,10 +58,10 @@ class PushServiceAPNS
             contentAvailable = payload.contentAvailable
 
             if not contentAvailable? and @conf.contentAvailable?
-              contentAvailable = @conf.contentAvailable
+                contentAvailable = @conf.contentAvailable
 
             if not category? and @conf.category?
-              category = @conf.category
+                category = @conf.category
 
             note.badge = badge if not isNaN(badge)
             note.sound = payload.sound
