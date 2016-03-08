@@ -44,7 +44,7 @@
         "punctual": "~1.0.2",
         "netmask": "~1.0.5",
         "winston": "~2.1.1",
-        "wns": "git://github.com/futurice/wns.git#b50810d168b8df547589d9af61917d22ccc91cc5"
+        "wns": "git+https://github.com/futurice/wns.git#b50810d168b8df547589d9af61917d22ccc91cc5"
     },
     "devDependencies":
     {
