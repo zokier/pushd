@@ -5,12 +5,11 @@ db:
 
 api:
   build: .
-  command: coffee ./pushd.coffee
-  volumes:
-    - .:/src
   ports:
     - "8000:8000"
   links:
     - db
   env_file:
-    ./settings-sample.env.example
+    ./settings.env
+  volumes:
+    - ./apns-certs:/pushd/apns-certs
