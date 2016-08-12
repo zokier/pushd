@@ -6,21 +6,22 @@ url = require 'url'
 Netmask = require('netmask').Netmask
 settings = require './settings'
 Subscriber = require('./lib/subscriber').Subscriber
+EventScheduler = require('./lib/eventscheduler').EventScheduler
 EventPublisher = require('./lib/eventpublisher').EventPublisher
 Event = require('./lib/event').Event
 PushServices = require('./lib/pushservices').PushServices
 Payload = require('./lib/payload').Payload
 logger = require 'winston'
 morgan = require 'morgan'
+redis = require 'redis'
+punctual = require 'punctual'
 
 if settings.server.redis_socket?
-    redis = require('redis').createClient(settings.server.redis_socket)
+    redisClient = redis.createClient(settings.server.redis_socket)
+    redisClientSub = redis.createClient(settings.server.redis_socket)
 else if settings.server.redis_port? or settings.server.redis_host?
-    redis = require('redis').createClient(settings.server.redis_port, settings.server.redis_host)
-else
-    redis = require('redis').createClient()
-if settings.server.redis_db_number?
-    redis.select(settings.server.redis_db_number)
+    redisClient = redis.createClient(settings.server.redis_port, settings.server.redis_host)
+    redisClientSub = redis.createClient(settings.server.redis_port, settings.server.redis_host)
 
 if settings.logging?
     logger.remove(logger.transports.Console)
@@ -32,16 +33,16 @@ if settings.logging?
             process.stderr.write "Invalid logger transport: #{loggerconfig['transport']}\n"
 
 if settings.server?.redis_auth?
-    redis.auth(settings.server.redis_auth)
+    redisClient.auth(settings.server.redis_auth)
 
 createSubscriber = (fields, cb) ->
     logger.verbose "creating subscriber proto = #{fields.proto}, token = #{fields.token}"
     throw new Error("Invalid value for `proto'") unless service = pushServices.getService(fields.proto)
     throw new Error("Invalid value for `token'") unless fields.token = service.validateToken(fields.token)
-    Subscriber::create(redis, fields, cb)
+    Subscriber::create(redisClient, fields, cb)
 
 tokenResolver = (proto, token, cb) ->
-    Subscriber::getInstanceFromToken redis, proto, token, cb
+    Subscriber::getInstanceFromToken redisClient, proto, token, cb
 
 eventSourceEnabled = no
 pushServices = new PushServices()
@@ -51,8 +52,10 @@ for name, conf of settings when conf.enabled
         # special case for EventSource which isn't a pluggable push protocol
         eventSourceEnabled = yes
     else
-        pushServices.addService(name, new conf.class(conf, logger, tokenResolver))
-eventPublisher = new EventPublisher(pushServices)
+        serviceClass = require(conf.module)
+        pushServices.addService(name, new serviceClass(conf, logger, tokenResolver))
+eventPublisher = new EventPublisher(logger, pushServices)
+eventScheduler = new EventScheduler(logger, redisClient)
 
 checkUserAndPassword = (username, password) =>
     if settings.server?.auth?
@@ -76,20 +79,20 @@ app.disable('x-powered-by');
 
 app.param 'subscriber_id', (req, res, next, id) ->
     try
-        req.subscriber = new Subscriber(redis, req.params.subscriber_id)
+        req.subscriber = new Subscriber(redisClient, req.params.subscriber_id)
         delete req.params.subscriber_id
         next()
     catch error
-        res.json error: error.message, 400
+        res.status(400).json {error: error.message}
 
 getEventFromId = (id) ->
-    return new Event(redis, id)
+    return new Event(redisClient, id)
 
 testSubscriber = (subscriber) ->
     pushServices.push(subscriber, null, new Payload({msg: "Test", "data.test": "ok"}))
 
 checkStatus = () ->
-    return redis.connected
+    return redisClient.connected
 
 app.param 'event_id', (req, res, next, id) ->
     try
@@ -97,7 +100,16 @@ app.param 'event_id', (req, res, next, id) ->
         delete req.params.event_id
         next()
     catch error
-        res.json error: error.message, 400
+        res.status(404).json {error: error.message}
+
+app.param 'message_id', (req, res, next, id) ->
+    eventScheduler.getMessage req.params.message_id, (err, message) ->
+        if err?
+            res.status(404).json {error: 'not found'}
+        else
+            req.message = message
+            delete req.params.message_id
+            next()
 
 authorize = (realm) ->
     if settings.server?.auth?
@@ -130,13 +142,17 @@ authorize = (realm) ->
     else
         return (req, res, next) -> next()
 
-require('./lib/api').setupRestApi(app, createSubscriber, getEventFromId, authorize, testSubscriber, eventPublisher, checkStatus)
+require('./lib/api').setupRestApi(app, createSubscriber, getEventFromId, authorize, testSubscriber, eventScheduler, eventPublisher, checkStatus)
 if eventSourceEnabled
     require('./lib/eventsource').setup(app, authorize, eventPublisher)
 
 port = settings?.server?.tcp_port ? 80
 listen_ip = settings?.server?.listen_ip
-if listen_ip
+listen_path = settings?.server?.path
+if listen_path
+    app.listen listen_path
+    logger.info "Listening on socket #{listen_path}"
+else if listen_ip
     app.listen port, listen_ip
     logger.info "Listening on ip address #{listen_ip} and tcp port #{port}"
 else
@@ -162,7 +178,7 @@ udpApi.on 'message', (msg, rinfo) ->
             status = 404
             if m = req.pathname?.match(event_route)
                 try
-                    event = new Event(redis, m[1])
+                    event = new Event(redisClient, m[1])
                     status = 204
                     switch method
                         when 'POST' then eventPublisher.publish(event, req.query)
@@ -177,3 +193,38 @@ port = settings?.server?.udp_port
 if port?
     udpApi.bind port
     logger.info "Listening on udp port #{port}"
+
+# TODO: encapsulate
+TaskScheduler = punctual.TaskScheduler
+TaskRunner = punctual.TaskRunner
+
+scriptTaskRunner = TaskRunner.create({ taskTypes: [ 'pushMessage' ] })
+
+TaskRunner.prototype.runTask = (task) ->
+    try
+        rawMessage = JSON.parse(task.message)
+        stamp = rawMessage.stamp
+        event = rawMessage.event
+        data = rawMessage.data
+        if data.at?
+            delete data.at
+        # re-instantiate event from name
+        event = new Event(redisClient, event.name)
+        eventPublisher.publish(event, data)
+    catch ex
+        logger.error "could not publish scheduled message #{ex} #{ex.stack}"
+
+scheduler = TaskScheduler.create({
+    logger: logger,
+    redisClient: redisClient,
+    redisClientSub: redisClientSub,
+    pollIntervalLength: 250,
+    redisKeys: {
+        scheduledJobsZset: 'pushMessage:scheduler',
+        scheduledJobsHash: (jobId) ->
+            return 'pushMessage:scheduler:' + jobId.toString();
+    },
+    taskRunners: {
+        scriptTaskRunner: scriptTaskRunner
+    }
+}).start()

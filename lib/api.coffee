@@ -7,7 +7,7 @@ filterFields = (params) ->
     fields[key] = val for own key, val of params when key in ['proto', 'token', 'lang', 'badge', 'version', 'category', 'contentAvailable']
     return fields
 
-exports.setupRestApi = (app, createSubscriber, getEventFromId, authorize, testSubscriber, eventPublisher, checkStatus) ->
+exports.setupRestApi = (app, createSubscriber, getEventFromId, authorize, testSubscriber, eventScheduler, eventPublisher, checkStatus) ->
     authorize ?= (realm) ->
 
     # subscriber registration
@@ -19,7 +19,7 @@ exports.setupRestApi = (app, createSubscriber, getEventFromId, authorize, testSu
                 subscriber.get (info) ->
                     info.id = subscriber.id
                     res.header 'Location', "/subscriber/#{subscriber.id}"
-                    res.json info, if created then 201 else 200
+                    res.status(if created then 201 else 200).json(info)
         catch error
             logger.error "Creating subscriber failed: #{error.message}"
             res.json error: error.message, 400
@@ -160,8 +160,20 @@ exports.setupRestApi = (app, createSubscriber, getEventFromId, authorize, testSu
 
     # Publish an event
     app.post '/event/:event_id', authorize('publish'), (req, res) ->
-        res.send 204
-        eventPublisher.publish(req.event, req.body)
+        data = req.body
+        event = req.event
+        if data.at? && +(data.at)?
+            eventScheduler.scheduleMessage event, data, (status, id) ->
+                if 0 > status
+                    res.send 500
+                else
+                    res.status(200).json({id: id})
+        else
+            eventPublisher.publish event, data, (status) ->
+                if 0 > status
+                    res.send 500
+                else
+                    res.send 204
 
     # Delete an event
     app.delete '/event/:event_id', authorize('publish'), (req, res) ->
@@ -172,6 +184,25 @@ exports.setupRestApi = (app, createSubscriber, getEventFromId, authorize, testSu
                 res.send 204
             else
                 res.send 404
+
+    # Get a scheduled message
+    app.get '/message/:message_id', authorize('publish'), (req, res) ->
+        message = eventScheduler.getMessage req.message.id, (err, message) ->
+            if err?
+                res.send 500
+            else
+                res.status(200).json(message)
+
+    # Delete a scheduled message
+    app.delete '/message/:message_id', authorize('publish'), (req, res) ->
+        eventScheduler.removeMessage req.message.id, (err) ->
+            if err?
+                res.send 500
+            else
+                res.send 204
+
+    # Update a scheduled message
+    app.put '/message/:message_id', authorize('publish'), (req, res) ->
 
     # Server status
     app.get '/status', authorize('register'), (req, res) ->

@@ -1,5 +1,6 @@
 {
     "author": "Olivier Poitrey <rs@dailymotion.com>",
+    "license": "MIT",
     "name": "pushd",
     "description": "Blazing fast multi-protocol mobile push notification service",
     "version": "1.6.5",
@@ -39,7 +40,8 @@
         "netmask": "~1.0.4",
         "winston": "~2.2.0",
         "morgan": "~1.7.0",
-        "wns": "git+https://github.com/futurice/wns.git#28bfe39a3be8c64f3d72b7c7a5cac77c049b137a"
+        "punctual": "~1.0.2",
+        "wns": "git+https://github.com/futurice/wns.git#b50810d168b8df547589d9af61917d22ccc91cc5"
     },
     "devDependencies":
     {

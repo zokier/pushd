@@ -66,4 +66,4 @@ class PushServiceGCM
 
 
 
-exports.PushServiceGCM = PushServiceGCM
+module.exports = PushServiceGCM
