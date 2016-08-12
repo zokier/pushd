@@ -45,4 +45,4 @@ class PushServiceC2DM
                 else if err
                     @logger?.error("C2DM Error #{err} for subscriber #{task.subscriber.id}")
 
-module.exports = PushServiceC2DM
+exports.PushServiceC2DM = PushServiceC2DM

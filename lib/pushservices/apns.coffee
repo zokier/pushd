@@ -77,4 +77,4 @@ class PushServiceAPNS
             if payload.incrementBadge
                 subscriber.incr 'badge'
 
-module.exports = PushServiceAPNS
+exports.PushServiceAPNS = PushServiceAPNS

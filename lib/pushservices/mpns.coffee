@@ -70,4 +70,4 @@ class PushServiceMPNS
                 catch error
                     @logger?.error("MPNS Error: #{error}")
 
-module.exports = PushServiceMPNS
+exports.PushServiceMPNS = PushServiceMPNS
