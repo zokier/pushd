@@ -1,0 +1,15 @@
+db:
+  image: redis
+  ports:
+    - "6379"
+
+api:
+  build: .
+  ports:
+    - "8000:8000"
+  links:
+    - db
+  env_file:
+    ./settings.env
+  volumes:
+    - ./apns-certs:/pushd/apns-certs
