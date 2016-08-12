@@ -11,6 +11,7 @@ Event = require('./lib/event').Event
 PushServices = require('./lib/pushservices').PushServices
 Payload = require('./lib/payload').Payload
 logger = require 'winston'
+morgan = require 'morgan'
 
 if settings.server.redis_socket?
     redis = require('redis').createClient(settings.server.redis_socket)
@@ -66,12 +67,11 @@ checkUserAndPassword = (username, password) =>
 
 app = express()
 
-app.use(express.logger(':method :url :status')) if settings.server?.access_log
+app.use(morgan(':method :url :status')) if settings.server?.access_log
 if settings.server?.auth? and not settings.server?.acl?
     app.use(express.basicAuth checkUserAndPassword)
 app.use(bodyParser.urlencoded({ limit: '1mb', extended: true }))
 app.use(bodyParser.json({ limit: '1mb' }))
-app.use(app.router)
 app.disable('x-powered-by');
 
 app.param 'subscriber_id', (req, res, next, id) ->
