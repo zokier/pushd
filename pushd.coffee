@@ -52,8 +52,7 @@ for name, conf of settings when conf.enabled
         # special case for EventSource which isn't a pluggable push protocol
         eventSourceEnabled = yes
     else
-        serviceClass = require(conf.module)
-        pushServices.addService(name, new serviceClass(conf, logger, tokenResolver))
+        pushServices.addService(name, new conf.class(conf, logger, tokenResolver))
 eventPublisher = new EventPublisher(logger, pushServices)
 eventScheduler = new EventScheduler(logger, redisClient)
 
