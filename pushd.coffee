@@ -15,6 +15,7 @@ logger = require 'winston'
 morgan = require 'morgan'
 redis = require 'redis'
 punctual = require 'punctual'
+basicAuth = require 'basic-auth-connect'
 
 if settings.server.redis_socket?
     redisClient = redis.createClient(settings.server.redis_socket)
@@ -71,7 +72,7 @@ app = express()
 
 app.use(morgan(':method :url :status')) if settings.server?.access_log
 if settings.server?.auth? and not settings.server?.acl?
-    app.use(express.basicAuth checkUserAndPassword)
+    app.use(basicAuth checkUserAndPassword)
 app.use(bodyParser.urlencoded({ limit: '1mb', extended: true }))
 app.use(bodyParser.json({ limit: '1mb' }))
 app.disable('x-powered-by');

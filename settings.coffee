@@ -8,18 +8,18 @@ exports.server =
     tcp_port: process.env.TCP_PORT
     udp_port: process.env.UDP_PORT
     access_log: process.env.ACCESS_LOG
-    acl:
-        # restrict publish access to private networks
-        publish: ['127.0.0.1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
-#    auth:
-#        # require HTTP basic authentication, username is 'admin' and
-#        # password is 'password'
-#        #
-#        # HTTP basic authentication overrides IP-based authentication
-#        # if both acl and auth are defined.
-#        admin:
-#            password: 'password'
-#            realms: ['register', 'publish']
+#    acl:
+#        # restrict publish access to private networks
+#        publish: ['127.0.0.1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
+    auth:
+        # require HTTP basic authentication, username is 'admin' and
+        # password is 'password'
+        #
+        # HTTP basic authentication overrides IP-based authentication
+        # if both acl and auth are defined.
+        admin:
+            password: 'password'
+            realms: ['register', 'publish']
 
 exports['event-source'] =
     enabled: process.env.EVENT_SOURCE_ENABLED
@@ -136,5 +136,5 @@ exports['mpns-raw'] =
 exports['logging'] = [
         transport: 'Console'
         options:
-            level: 'info'
+            level: 'silly'
     ]
